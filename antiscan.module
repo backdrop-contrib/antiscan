@@ -1,0 +1,193 @@
+<?php
+/**
+ * @file antiscan.module
+ */
+
+define('MODULE_UID', 10001); // reasonable big uid for use in DB records 
+
+/**
+ * Implements hook_config_info().
+ */
+function antiscan_config_info() {
+  $prefixes['antiscan.settings'] = array(
+    'label' => t('Antiscan'),
+    'group' => t('Configuration'),
+  );
+  
+  return $prefixes;
+}
+
+/**
+ * Implements hook_permission().
+ * Same as IP address blocking module
+ *
+ */
+function antiscan_permission() {
+  return array(
+    'antiscan settings' => array(
+      'title' => t('Administer Antiscan settings')
+    ),
+  );
+}
+ 
+/**
+ * Implements hook_menu().
+ *
+ */
+function antiscan_menu() {
+  $items = array();
+
+  $items['admin/config/people/antiscan'] = array(
+    'type' => MENU_NORMAL_ITEM,
+    'title' => 'Antiscan',
+    'description' => 'Manage IP blocking for restricted paths.',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('antiscan_form'),
+    'access arguments' => array('antiscan settings'),
+    'file' => 'antiscan.admin.inc',
+  );
+  
+  return $items;
+}
+
+/**
+ * Implements hook_boot().
+ *
+ */
+function antiscan_boot() {
+  $request_uri = htmlspecialchars($_SERVER['REQUEST_URI']);
+  if (antiscan_path_match($request_uri)) {
+    $ip = check_plain(ip_address());
+    antiscan_ip_service($ip, $request_uri);
+  }
+}
+
+/**
+ * Check if path contain restricted pattern 
+ * @param string $path
+ * @return boolean
+ */
+function antiscan_path_match($path = '') {
+  $match           = FALSE;
+  $config          = config('antiscan.settings');
+  $path_patterns   = $config->get('path_patterns');
+  $patterns        = _textarea_to_array($path_patterns);
+  
+  foreach ($patterns as $pattern) {
+    
+    if (substr($pattern, -1) == '*') {
+      $pattern = substr($pattern, 0, -1);
+    }
+    
+    if (strpos(strtolower($path), $pattern) !== FALSE) {
+      $match = TRUE;
+      break;
+    }
+  }
+
+  return $match;
+} 
+
+/**
+ * Check IP and do required action.
+ * @param string $ip
+ * @param string $request_uri
+ */
+function antiscan_ip_service($ip, $request_uri) {
+  if (filter_var($ip, FILTER_VALIDATE_IP) !== FALSE) {
+    $config      = config('antiscan.settings');
+    $test_mode   = $config->get('test_mode');
+    $log_enabled = $config->get('log_enabled');
+    $ban_message = '<h1>Suspicious activity detected, your IP address ' . $ip . ' has been banned.</h1>';
+    
+    if ($test_mode) {
+      header($_SERVER['SERVER_PROTOCOL'] . ' 403 Forbidden');
+      print $ban_message;
+      exit();
+    }
+    else {
+      // if IP is not blocked already
+      if (!antiscan_is_denied($ip)) {
+        header($_SERVER['SERVER_PROTOCOL'] . ' 403 Forbidden');
+        print $ban_message;
+        
+        db_insert('blocked_ips')
+          ->fields(array('ip' => $ip, 'reason' => 'Suspicious activity, see log messages (if enabled) for more info.', 'time' => time(), 'uid' => MODULE_UID))
+          ->execute();
+        
+        if ($log_enabled) {
+          watchdog(
+            'antiscan', 
+            'IP %ip blocked, request: "%request_uri".', 
+            array('%ip' => $ip, '%request_uri' => $request_uri),
+            WATCHDOG_WARNING
+          );
+        }
+        exit();
+      }
+    }
+  }
+}
+
+/**
+ * Checks to see if an IP address has been blocked.
+ * (Function from IP address blocking module.)
+ * Blocked IP addresses are stored in the database only.
+ * @param $ip IP address to check.
+ *
+ * @return bool TRUE if access is denied, FALSE if access is allowed.
+ */
+function antiscan_is_denied($ip) {
+  $denied = FALSE;
+  
+  if (class_exists('Database', FALSE)) {
+    $denied = (bool)db_query("SELECT 1 FROM {blocked_ips} WHERE ip = :ip", array(':ip' => $ip))->fetchField();
+  }
+  
+  return $denied;
+}
+
+/**
+ * Implementation of hook_cron().
+*/
+function antiscan_cron() {
+  $config        = config('antiscan.settings');
+  $unblock       = $config->get('unblock');
+  $unblock_after = $config->get('unblock_after');
+  $time_expired  = time() - $unblock_after;  
+
+  if ($unblock) {
+    antiscan_unblock($time_expired);
+  }
+}
+
+/**
+ * Remove blocked IP records from DB
+ * @param int $time_expired
+ */
+function antiscan_unblock($time_expired) {
+
+  $deleted = db_delete('blocked_ips')
+    ->condition('uid', MODULE_UID)
+    ->condition('time', $time_expired,'<')
+    ->execute();
+  
+  if ($deleted > 0) {
+    watchdog('antiscan', 'Unblocked %deleted IP(s) after expiration.', array('%deleted' => $deleted));
+  }
+}
+
+/**
+ * Utility function
+ * @param string $raw_string
+ * @return array of strings saved in the configuration file string via textarea field
+ */
+function _textarea_to_array($raw_string = '') {
+  $array_of_strings = array();
+  
+  if (!empty($raw_string)) {
+    $raw_array        = preg_split("/\\r\\n|\\r|\\n|,/", $raw_string);
+    $array_of_strings = array_filter(array_map('trim', $raw_array));
+  }
+  return $array_of_strings;
+}

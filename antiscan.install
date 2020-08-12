@@ -1,0 +1,32 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the Antiscan module.
+ */
+ 
+/**
+ * Implements hook_requirements().
+ */
+function antiscan_requirements($phase) {
+  $requirements = array();
+  $t = get_t();
+
+  if ($phase == 'install') {
+    $ip_blocking_info = system_get_info('module', 'ip_blocking');
+      if (empty($ip_blocking_info) || empty($ip_blocking_info['version'])) {
+      // The module doesn't exist, it's not enabled?
+      return FALSE;
+    }
+    if (version_compare($ip_blocking_info['version'], '1.x-1.0.5', '<')) {
+      $requirements['version'] = array(
+        'title' => $t('version'),
+        'description' => $t('IP address blocking module must have version 1.x-1.0.5 or newest.'),
+        'value' => check_plain($ip_blocking_info['version']),
+        'severity' => REQUIREMENT_ERROR,
+      );
+    }
+  }
+
+  return $requirements;
+}
