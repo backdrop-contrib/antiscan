@@ -13,7 +13,7 @@ function antiscan_form() {
   $form   = array();
   
   $form['top'] = array(
-    '#markup' => t('When a web crawler or even a person tries to visit a path that contains a pattern that matches one of defined in the field below, their IP address will be blocked.')
+    '#markup' => t('When a web crawler or even a person tries to visit a path that matches one of the patterns specified in the field below, their IP address will be blocked.')
   );
 
   $path_patterns = $config->get('path_patterns');
@@ -25,8 +25,8 @@ function antiscan_form() {
     '#title' => t('Restricted path patterns'),
     '#required' => TRUE,
     '#description' => t('Enter paths or parts of paths to restrict, separating them with commas or new lines.')
-      . '<br />' . t('Please note: the <b>*</b> character is a wildcard for end of string, so pattern like:') . '<b> wp-* </b>' 
-      . t('will match to any of "wp-admin", "wp-login" and so on.'),
+      . '<br />' . t('Please note: the <b>*</b> character is a wildcard for end of pattern, so pattern like') . '<b> wp-* </b>' 
+      . t('will match to any path containing "wp-admin", "wp-login", etc.'),
     
   );
 
@@ -68,7 +68,7 @@ function antiscan_form() {
     '#type' => 'checkbox',
     '#title' => t('Test mode'),
     '#default_value' => $config->get('test_mode'),
-    '#description' => t('Enable for test your patterns, your IP will not be blocked, but you can see message when trying visit restricted path.'), 
+    '#description' => t('Turn it on to test your patterns. Your IP address will not be blocked, but you may see a blocking message when trying to visit a path containing a restricted path pattern.'), 
   );
   
   $form['actions']['#type'] = 'actions';

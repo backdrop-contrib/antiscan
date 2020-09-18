@@ -1,5 +1,5 @@
 name = Antiscan 
-description = Web scanners block by IP when try access restricted paths.
+description = Block IP of web scanners trying access to restricted paths.
 package = Spam control
 backdrop = 1.x
 type = module
@@ -8,4 +8,4 @@ dependencies[] = ip_blocking (>=1.0.5)
 
 configure = admin/config/people/antiscan
 
-version = 1.0.1 
+version = 1.0.2 

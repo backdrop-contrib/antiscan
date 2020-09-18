@@ -13,7 +13,6 @@ function antiscan_config_info() {
     'label' => t('Antiscan'),
     'group' => t('Configuration'),
   );
-  
   return $prefixes;
 }
 
@@ -46,7 +45,6 @@ function antiscan_menu() {
     'access arguments' => array('antiscan settings'),
     'file' => 'antiscan.admin.inc',
   );
-  
   return $items;
 }
 
@@ -74,7 +72,6 @@ function antiscan_path_match($path = '') {
   $patterns        = _textarea_to_array($path_patterns);
   
   foreach ($patterns as $pattern) {
-    
     if (substr($pattern, -1) == '*') {
       $pattern = substr($pattern, 0, -1);
     }
@@ -84,7 +81,6 @@ function antiscan_path_match($path = '') {
       break;
     }
   }
-
   return $match;
 } 
 
@@ -100,6 +96,13 @@ function antiscan_ip_service($ip, $request_uri) {
     $log_enabled = $config->get('log_enabled');
     $ban_message = '<h1>Suspicious activity detected, your IP address ' . $ip . ' has been banned.</h1>';
     
+    if (strlen($request_uri) > 45) {
+      $request = 'Request: ' . substr($request_uri, 0, 45) . '...';
+    }
+    else {
+      $request = 'Request: ' . $request_uri;
+    }
+    
     if ($test_mode) {
       header($_SERVER['SERVER_PROTOCOL'] . ' 403 Forbidden');
       print $ban_message;
@@ -112,14 +115,14 @@ function antiscan_ip_service($ip, $request_uri) {
         print $ban_message;
         
         db_insert('blocked_ips')
-          ->fields(array('ip' => $ip, 'reason' => 'Suspicious activity, see log messages (if enabled) for more info.', 'time' => time(), 'uid' => MODULE_UID))
+          ->fields(array('ip' => $ip, 'reason' => $request, 'time' => time(), 'uid' => MODULE_UID))
           ->execute();
         
         if ($log_enabled) {
           watchdog(
             'antiscan', 
-            'IP %ip blocked, request: "%request_uri".', 
-            array('%ip' => $ip, '%request_uri' => $request_uri),
+            'IP %ip blocked. %request.', 
+            array('%ip' => $ip, '%request' => $request),
             WATCHDOG_WARNING
           );
         }
@@ -143,7 +146,6 @@ function antiscan_is_denied($ip) {
   if (class_exists('Database', FALSE)) {
     $denied = (bool)db_query("SELECT 1 FROM {blocked_ips} WHERE ip = :ip", array(':ip' => $ip))->fetchField();
   }
-  
   return $denied;
 }
 
@@ -167,13 +169,13 @@ function antiscan_cron() {
  */
 function antiscan_unblock($time_expired) {
 
-  $deleted = db_delete('blocked_ips')
+  $unblocked = db_delete('blocked_ips')
     ->condition('uid', MODULE_UID)
     ->condition('time', $time_expired,'<')
     ->execute();
   
-  if ($deleted > 0) {
-    watchdog('antiscan', 'Unblocked %deleted IP(s) after expiration.', array('%deleted' => $deleted));
+  if ($unblocked > 0) {
+    watchdog('antiscan', 'Unblocked %unblocked IP(s). Selected blocking period has expired.', array('%unblocked' => $unblocked));
   }
 }
 
@@ -191,3 +193,40 @@ function _textarea_to_array($raw_string = '') {
   }
   return $array_of_strings;
 }
+
+/**
+ * Implements hook_block_info().
+ */
+function antiscan_block_info() {
+  $blocks['blocked_ips'] = array(
+    'info' => t('Blocked IPs'),
+    'description' => t('Number of blocked IPs.'),
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ *
+ * Generates a block with number of blocked IPs.
+ */
+function antiscan_block_view($delta = '') {
+  $block = array();
+  $ip_num = '';
+  $requirements = system_get_requirements();
+  foreach ($requirements as $requirement) {
+    if (isset($requirement['title']) && $requirement['title'] === 'IP address blocking') {
+      $ip_num = $requirement['value'];
+    }
+  }
+  
+  if (user_access('antiscan settings') && ($delta === 'blocked_ips')) {
+    if (!empty($ip_num)) {
+      $block['subject'] = t('Blocked IPs');
+      $block['content'] = array(
+        '#markup' => 'Total ' . $ip_num,
+      );
+      return $block;
+    }
+  }
+}  
