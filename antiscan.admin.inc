@@ -24,8 +24,8 @@ function antiscan_form() {
     '#default_value' => $path_patterns,
     '#title' => t('Restricted path patterns'),
     '#required' => TRUE,
-    '#description' => t('Enter paths or parts of paths to restrict, separating them with commas or new lines.')
-      . '<br />' . t('Please note: the <b>*</b> character is a wildcard for end of pattern, so pattern like') . '<b> wp-* </b>' 
+    '#description' => t('Enter paths or portions of paths to restrict, separating them with commas or new lines.')
+      . '<br>' . t('Please note: the <b>*</b> character is a wildcard for end of pattern, so pattern like') . '<b> wp-* </b>' 
       . t('will match to any path containing "wp-admin", "wp-login", etc.'),
     
   );
@@ -34,7 +34,26 @@ function antiscan_form() {
   $form['info'] = array(
     '#markup' => '<p><b>'. t('Please note') .': </b>' . t('you can manage the list of blocked IPs at  <a href="@url">this page</a>.', array('@url' => $url)) . '</p>',
   );
+  
+  $form['noblock'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Additional settings'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
 
+  $path_noblock = $config->get('path_noblock');
+  $form['noblock']['path_noblock'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Not blockable path patterns'),
+    '#rows' => 6,
+    '#columns' => 60,
+    '#default_value' => $path_noblock,
+    '#required' => TRUE,
+    '#description' => t('Enter paths or portions of paths that will NOT be restricted to avoid self-blocking your users.')
+      . '<br>' . t('Same format of rules as above.'),
+  );
+  
   $form['log_enabled'] = array(
     '#type' => 'checkbox',
     '#title' => t('Enable logging'),
@@ -87,8 +106,13 @@ function antiscan_form_validate($form, &$form_state) {
   $path_noblock   = $config->get('path_noblock');
   $path_patterns  = trim($form_state['values']['path_patterns']);
   
-  if (strpos(strtolower($path_patterns), $path_noblock) !== FALSE) {
-    form_set_error('path_patterns', t('You cannot use "%path_noblock" within pattern. If you need restrict users login ability, please use another module.', array('%path_noblock' => $path_noblock)));
+  $noblock_array  = _textarea_to_array($path_noblock);
+  $patterns_array = _textarea_to_array($path_patterns);
+  $matched        = array_intersect($noblock_array, $patterns_array); 
+
+  if (!empty($matched)) {
+    $matched_patterns = implode(", ", $matched);
+    form_set_error('path_patterns', t('You cannot use "%matched_patterns" for a pattern. Please verify "Not blockable path patterns" under "Additional settings" below.', array('%matched_patterns' => $matched_patterns)));
   }
 }
 
@@ -98,12 +122,14 @@ function antiscan_form_validate($form, &$form_state) {
 function antiscan_form_submit($form, &$form_state) {
   $config         = config('antiscan.settings');
   $path_patterns  = trim($form_state['values']['path_patterns']);
+  $path_noblock   = trim($form_state['values']['path_noblock']);
   $log_enabled    = (int) $form_state['values']['log_enabled'];
   $unblock        = (int) $form_state['values']['unblock'];
   $unblock_after  = (int) $form_state['values']['unblock_after']; 
   $test_mode      = (int) $form_state['values']['test_mode'];
   
   $config->set('path_patterns',  strtolower($path_patterns));
+  $config->set('path_noblock',   strtolower($path_noblock));
   $config->set('log_enabled',    $log_enabled);
   $config->set('unblock',        $unblock);
   $config->set('unblock_after',  $unblock_after);

@@ -1,7 +1,7 @@
 {
   "_config_name": "antiscan.settings",
-  "path_patterns": "administrator,elrekt,eval-stdin.php,fck,phpMyAdmin,wp-*,wlwmanifest.xml,xmlrpc.php",
-  "path_noblock": "user/",
+  "path_patterns": "elrekt,eval-stdin.php,/fck,phpMyAdmin,/wp-*,wlwmanifest.xml,xmlrpc.php",
+  "path_noblock": "user/,admin/",
   "log_enabled": 1,
   "test_mode": 0,
   "unblock": 1,
