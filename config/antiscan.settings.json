@@ -5,6 +5,7 @@
   "log_enabled": 1,
   "test_mode": 0,
   "unblock": 1,
-  "unblock_after": 604800
+  "unblock_after": 604800,
+  "abuseipdb_report": 0
 } 
  

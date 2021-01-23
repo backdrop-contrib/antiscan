@@ -9,6 +9,9 @@ module (version 1.x-1.0.5 or newest) to automatically block anyone who tries to 
 Usually it is a bad crawler looking for known potentially vulnerable paths, 
 such as "wp-admin.php", "xmlrpc.php" and so on.
 
+**New in version version 1.x-1.0.4:** option "Report to AbuseIPDB" can be enabled for automatic reporting to AbuseIPDB about blocked scanners activity.
+(You need to install [AbuseIPDB report](https://backdropcms.org/project/abuseipdb_report) module to see and use this option.)
+
 Installation
 ------------
 Install this module using the official Backdrop CMS instructions at https://backdropcms.org/guide/modules
@@ -21,7 +24,8 @@ and may be used for:
 
 - add your patterns for paths to be restricted (some usefull patterns are already added out of the box);
 - set paths or portions of paths that will NOT be restricted to avoid self-blocking;
-- enable or disable logging for blocked access attempts (enabled by default);
+- enable automatic reporting to AbuseIPDB about blocked scanners activity ("AbuseIPDB report" module should be installed);
+- enable logging for blocked access attempts (enabled by default);
 - select the time after which the blocked IP will be unblocked automatically;
 - use "Test Mode" to test your patterns, your current IP will not be blocked, but you may see a message when you try to visit the restricted path.
 

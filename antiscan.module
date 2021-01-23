@@ -153,13 +153,18 @@ function antiscan_is_denied($ip) {
  * Implementation of hook_cron().
 */
 function antiscan_cron() {
-  $config        = config('antiscan.settings');
-  $unblock       = $config->get('unblock');
-  $unblock_after = $config->get('unblock_after');
-  $time_expired  = time() - $unblock_after;  
+  $config           = config('antiscan.settings');
+  $abuseipdb_report = $config->get('abuseipdb_report');
+  $unblock          = $config->get('unblock');
+  $unblock_after    = $config->get('unblock_after');
+  $time_expired     = time() - $unblock_after;  
 
   if ($unblock) {
     antiscan_unblock($time_expired);
+  }
+  
+  if ($abuseipdb_report) {
+    antiscan_abuseipdb_report();
   }
 }
 
@@ -176,6 +181,45 @@ function antiscan_unblock($time_expired) {
   
   if ($unblocked > 0) {
     watchdog('antiscan', 'Unblocked %unblocked IP(s). Selected blocking period has expired.', array('%unblocked' => $unblocked));
+  }
+}
+
+/**
+ * Report blocked IP to AbuseIPDB.
+ */
+function antiscan_abuseipdb_report() {
+  
+  if (module_exists('abuseipdb_report')) {
+    $config           = config('antiscan.settings');
+    $abuseipdb_report = $config->get('abuseipdb_report');
+    
+    if ($abuseipdb_report) {
+      $last_report_date = state_get('antiscan_abuseipdb_report_last_date', 0);
+      
+      $result = db_select('blocked_ips', 'bi')
+          ->fields('bi', array(
+            'ip', 'reason',
+            )
+          )
+          ->condition('uid', MODULE_UID, '=')                
+          ->condition('time', $last_report_date, '>')                
+          ->execute()
+          ->fetchAll();
+      
+      if ($result) {
+        // Most relevant categories: Brute-Force, Bad Web Bot, Web App Attack
+        $categories = array(18, 19, 21);
+
+        foreach ($result as $record => $value) {
+          $ip = $value->ip;
+          $request = $value->reason;
+          abuseipdb_report_ip($ip, $request, '"Antiscan" module', $categories);
+          sleep(1);
+        }
+        
+        state_set('antiscan_abuseipdb_report_last_date', time());
+      }
+    }
   }
 }
 

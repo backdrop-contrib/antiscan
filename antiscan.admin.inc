@@ -8,9 +8,8 @@
  * Define the form for manage blocking restricted paths
  *
  */
-function antiscan_form() {
+function antiscan_form($form, &$form_state) {
   $config = config('antiscan.settings');
-  $form   = array();
   
   $form['top'] = array(
     '#markup' => t('When a web crawler or even a person tries to visit a path that matches one of the patterns specified in the field below, their IP address will be blocked.')
@@ -25,8 +24,8 @@ function antiscan_form() {
     '#title' => t('Restricted path patterns'),
     '#required' => TRUE,
     '#description' => t('Enter paths or portions of paths to restrict, separating them with commas or new lines.')
-      . '<br>' . t('Please note: the <b>*</b> character is a wildcard for end of pattern, so pattern like') . '<b> wp-* </b>' 
-      . t('will match to any path containing "wp-admin", "wp-login", etc.'),
+      . '<br>' . t('Please note: the <b>*</b> character is a wildcard for end of pattern, so pattern like') . '<b> /wp-* </b>' 
+      . t('will match to any path containing "/wp-admin", "/wp-login.php", etc.'),
     
   );
 
@@ -53,6 +52,15 @@ function antiscan_form() {
     '#description' => t('Enter paths or portions of paths that will NOT be restricted to avoid self-blocking your users.')
       . '<br>' . t('Same format of rules as above.'),
   );
+  
+  if (module_exists('abuseipdb_report')) { 
+    $form['abuseipdb_report'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Report to AbuseIPDB'),
+      '#default_value' => $config->get('abuseipdb_report'),
+      '#description' => t('Report to AbuseIPDB about blocked scanners activity.'), 
+    );
+  }  
   
   $form['log_enabled'] = array(
     '#type' => 'checkbox',
@@ -120,20 +128,23 @@ function antiscan_form_validate($form, &$form_state) {
  * Implements hook_submit().
  */
 function antiscan_form_submit($form, &$form_state) {
-  $config         = config('antiscan.settings');
-  $path_patterns  = trim($form_state['values']['path_patterns']);
-  $path_noblock   = trim($form_state['values']['path_noblock']);
-  $log_enabled    = (int) $form_state['values']['log_enabled'];
-  $unblock        = (int) $form_state['values']['unblock'];
-  $unblock_after  = (int) $form_state['values']['unblock_after']; 
-  $test_mode      = (int) $form_state['values']['test_mode'];
+  $config        = config('antiscan.settings');
+  $path_patterns = trim($form_state['values']['path_patterns']);
+  $path_noblock  = trim($form_state['values']['path_noblock']);
+  $log_enabled   = (int) $form_state['values']['log_enabled'];
+  $unblock       = (int) $form_state['values']['unblock'];
+  $unblock_after = (int) $form_state['values']['unblock_after']; 
+  $test_mode     = (int) $form_state['values']['test_mode'];
   
-  $config->set('path_patterns',  strtolower($path_patterns));
-  $config->set('path_noblock',   strtolower($path_noblock));
-  $config->set('log_enabled',    $log_enabled);
-  $config->set('unblock',        $unblock);
-  $config->set('unblock_after',  $unblock_after);
-  $config->set('test_mode',      $test_mode);
+  $config->set('path_patterns', strtolower($path_patterns));
+  $config->set('path_noblock',  strtolower($path_noblock));
+  if (isset($form_state['values']['abuseipdb_report'])) {  
+    $config->set('abuseipdb_report', $form_state['values']['abuseipdb_report']);
+  }
+  $config->set('log_enabled',   $log_enabled);
+  $config->set('unblock',       $unblock);
+  $config->set('unblock_after', $unblock_after);
+  $config->set('test_mode',     $test_mode);
   
   $config->save();
   backdrop_set_message(t('The configuration options have been saved.'));

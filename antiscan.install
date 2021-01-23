@@ -30,3 +30,15 @@ function antiscan_requirements($phase) {
 
   return $requirements;
 }
+
+/**
+ *  Add and initialize new variable.
+ *  Set first starting time for reports.
+ */
+function antiscan_update_1000() {
+  $config = config('antiscan.settings');
+  $config->set('abuseipdb_report', 0);
+  $config->save();
+  
+  state_set('antiscan_abuseipdb_report_last_date', time());
+}
