@@ -10,7 +10,9 @@
  */
 function antiscan_requirements($phase) {
   $requirements = array();
-  $t = get_t();
+  $t            = get_t();
+  $config       = config('antiscan.settings');
+  $test_mode    = $config->get('test_mode');
 
   if ($phase == 'install') {
     $ip_blocking_info = system_get_info('module', 'ip_blocking');
@@ -27,6 +29,18 @@ function antiscan_requirements($phase) {
       );
     }
   }
+  
+  if ($phase == 'runtime') {
+    if ($test_mode) {
+      $url = url('admin/config/people/antiscan');
+      $requirements['antiscan'] = array(
+        'title' => t('"Test mode" of "Antiscan" module is on'),
+        'value' => t('Antiscan module "test mode" is on. <a href="@url">Turn off "Test Mode"</a> for the module to work properly.',
+        array('@url' => $url)),
+        'severity' => REQUIREMENT_WARNING,
+      );
+    }  
+  }
 
   return $requirements;
 }
@@ -41,4 +55,15 @@ function antiscan_update_1000() {
   $config->save();
   
   state_set('antiscan_abuseipdb_report_last_date', time());
+}
+
+/**
+ *  Add and initialize new variables.
+ *
+*/
+function antiscan_update_1001() {
+  $config = config('antiscan.settings');
+  $config->set("blocked_ua", "drupalgeddon2\r\nGo-http-client/*\r\nlibwww-perl*\r\npython-requests/*");
+  $config->set('blocked_referrer', 'semalt.com,buttons-for-website.com,simple-share-buttons.com,simplesharebuttons.com');
+  $config->save();  
 }

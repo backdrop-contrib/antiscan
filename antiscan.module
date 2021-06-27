@@ -54,22 +54,35 @@ function antiscan_menu() {
  */
 function antiscan_boot() {
   $request_uri = htmlspecialchars($_SERVER['REQUEST_URI']);
-  if (antiscan_path_match($request_uri)) {
-    $ip = check_plain(ip_address());
-    antiscan_ip_service($ip, $request_uri);
+  $ua_string   = isset($_SERVER['HTTP_USER_AGENT']) ? htmlspecialchars($_SERVER['HTTP_USER_AGENT']) : '';
+  $referrer    = isset($_SERVER['HTTP_REFERER']) ? htmlspecialchars($_SERVER['HTTP_REFERER']) : '';
+  $ip          = check_plain(ip_address());
+  $config      = config('antiscan.settings');
+  $test_mode   = $config->get('test_mode');
+  
+  if ($test_mode || (antiscan_check_ip($ip) && !antiscan_ip_blocked($ip))) {
+    if (antiscan_path_match($request_uri)) {
+      antiscan_action($ip, 'path', $request_uri);
+    }
+    elseif (antiscan_blocked_ua($ua_string)) {
+      antiscan_action($ip, 'ua', $ua_string);
+    }
+    elseif (antiscan_blocked_referrer($referrer)) {
+      antiscan_action($ip, 'referrer', $referrer);
+    }
   }
 }
 
 /**
- * Check if path contain restricted pattern 
+ * Check if path contain restricted pattern.
  * @param string $path
  * @return boolean
  */
 function antiscan_path_match($path = '') {
-  $match           = FALSE;
-  $config          = config('antiscan.settings');
-  $path_patterns   = $config->get('path_patterns');
-  $patterns        = _textarea_to_array($path_patterns);
+  $match         = FALSE;
+  $config        = config('antiscan.settings');
+  $path_patterns = $config->get('path_patterns');
+  $patterns      = _textarea_to_array($path_patterns);
   
   foreach ($patterns as $pattern) {
     if (substr($pattern, -1) == '*') {
@@ -82,71 +95,163 @@ function antiscan_path_match($path = '') {
     }
   }
   return $match;
-} 
+}
 
 /**
- * Check IP and do required action.
- * @param string $ip
- * @param string $request_uri
+ * Check if UA string listed in the list blocked.
+ * @param string $ua
+ * @return boolean
  */
-function antiscan_ip_service($ip, $request_uri) {
-  if (filter_var($ip, FILTER_VALIDATE_IP) !== FALSE) {
-    $config      = config('antiscan.settings');
-    $test_mode   = $config->get('test_mode');
-    $log_enabled = $config->get('log_enabled');
-    $ban_message = '<h1>Suspicious activity detected, your IP address ' . $ip . ' has been banned.</h1>';
-    
-    if (strlen($request_uri) > 45) {
-      $request = 'Request: ' . substr($request_uri, 0, 45) . '...';
-    }
-    else {
-      $request = 'Request: ' . $request_uri;
+function antiscan_blocked_ua($ua = '') {
+  $match      = FALSE;
+  $config     = config('antiscan.settings');
+  $blocked_ua = $config->get('blocked_ua');
+  $u_agents   = _textarea_to_array($blocked_ua);
+  
+  foreach ($u_agents as $u_agent) {
+    if (substr($u_agent, -1) == '*') {
+      $u_agent = substr($u_agent, 0, -1);
     }
     
-    if ($test_mode) {
-      header($_SERVER['SERVER_PROTOCOL'] . ' 403 Forbidden');
-      print $ban_message;
-      exit();
+    if (strpos($ua, $u_agent) !== FALSE) {
+      $match = TRUE;
+      break;
     }
-    else {
-      // if IP is not blocked already
-      if (!antiscan_is_denied($ip)) {
-        header($_SERVER['SERVER_PROTOCOL'] . ' 403 Forbidden');
-        print $ban_message;
-        
-        db_insert('blocked_ips')
-          ->fields(array('ip' => $ip, 'reason' => $request, 'time' => time(), 'uid' => MODULE_UID))
-          ->execute();
-        
-        if ($log_enabled) {
-          watchdog(
-            'antiscan', 
-            'IP %ip blocked. %request.', 
-            array('%ip' => $ip, '%request' => $request),
-            WATCHDOG_WARNING
-          );
+  }
+  return $match;
+}
+
+/**
+ * Check if referrer listed in the list blocked.
+ * @param string $referrer
+ * @return boolean
+ */
+function antiscan_blocked_referrer($referrer = '') {
+  $match            = FALSE;
+  $config           = config('antiscan.settings');
+  $blocked_referrer = $config->get('blocked_referrer');
+  $blocked_refs     = _textarea_to_array($blocked_referrer);
+
+  foreach ($blocked_refs as $blocked_ref) {
+    if (strpos(strtolower($referrer), $blocked_ref) !== FALSE) {
+      $match = TRUE;
+      break;
+    }
+  }    
+  return $match;
+}
+
+/**
+ * Check IP then do required action.
+ * @param string $ip
+ * @param string $type
+ * @param string $subject
+ */
+function antiscan_action($ip, $type, $subject) {
+  $config      = config('antiscan.settings');
+  $test_mode   = $config->get('test_mode');
+  $log_enabled = $config->get('log_enabled');
+  $ban_message = '<h1>Suspicious activity detected, your IP address ' . $ip . ' has been banned.</h1>';
+  $ban_reason  = '<p>Ban reason: ' . $type . ' is ' . $subject . '</p>'
+    . '<h2>This is not a real ban - the test mode of the "Antiscan" module is on!</h2>';
+
+  if ($test_mode) {
+    header($_SERVER['SERVER_PROTOCOL'] . ' 403 Forbidden');
+    print $ban_message . $ban_reason;
+    exit();
+  }
+
+  if (!antiscan_logged_in_ip($ip)) {
+    
+    header($_SERVER['SERVER_PROTOCOL'] . ' 403 Forbidden');
+    print $ban_message;
+    
+    switch ($type) {
+      case 'path':
+        if (strlen($subject) > 45) {
+          $reason = 'Request: ' . substr($subject, 0, 45) . '...';
         }
-        exit();
-      }
+        else {
+          $reason = 'Request: ' . $subject;
+        }
+        break;
+      case 'ua':
+        $reason = 'Blocked User-Agent: ' . $subject;
+        break;
+      case 'referrer':
+        $reason = 'Spam referrer: ' . $subject;
+        break;
     }
+    
+    antiscan_block_ip($ip, $reason);
+    exit();
   }
 }
 
 /**
- * Checks to see if an IP address has been blocked.
- * (Function from IP address blocking module.)
- * Blocked IP addresses are stored in the database only.
- * @param $ip IP address to check.
+ * Check if IP is current logged in user IP.
+ * @global object $user
+ * @param string $ip
+ * @return TRUE if IP is current logged in user IP
+ */
+function antiscan_logged_in_ip($ip = '') {
+  global $user;
+  
+  if ($user->uid > 0 && $user->hostname == $ip) {
+    return TRUE;
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Block an IP address.
  *
+ * @param string $ip IP address to block.
+ * @param string $reason Reason for blocking.
+ */
+function antiscan_block_ip($ip, $reason) {
+  $config      = config('antiscan.settings');
+  $log_enabled = $config->get('log_enabled');
+
+  // Insert the record to DB.
+  db_insert('blocked_ips')
+    ->fields(array('ip' => $ip, 'reason' => $reason, 'time' => time(), 'uid' => MODULE_UID))
+    ->execute();
+  
+  if ($log_enabled) {
+    watchdog(
+      'antiscan', 
+      'IP %ip blocked. %reason.', 
+      array('%ip' => $ip, '%reason' => $reason),
+      WATCHDOG_WARNING
+    );
+  }
+}
+
+/**
+ * Check if IP is valid
+ * @param string $ip IP address
+ * @return boolean TRUE if $ip is valid IP address
+ */
+function antiscan_check_ip($ip) {
+  return (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_RES_RANGE) !== FALSE);
+}
+
+/**
+ * Checks to see if an IP address already blocked.
+ * Blocked IP addresses are stored in the database.
+ * @param $ip IP address to check.
  * @return bool TRUE if access is denied, FALSE if access is allowed.
  */
-function antiscan_is_denied($ip) {
-  $denied = FALSE;
+function antiscan_ip_blocked($ip) {
+  $blocked = FALSE;
   
   if (class_exists('Database', FALSE)) {
-    $denied = (bool)db_query("SELECT 1 FROM {blocked_ips} WHERE ip = :ip", array(':ip' => $ip))->fetchField();
+    $blocked = (bool)db_query("SELECT 1 FROM {blocked_ips} WHERE ip = :ip", array(':ip' => $ip))->fetchField();
   }
-  return $denied;
+  return $blocked;
 }
 
 /**
@@ -207,8 +312,8 @@ function antiscan_abuseipdb_report() {
           ->fetchAll();
       
       if ($result) {
-        // Most relevant categories: Brute-Force, Bad Web Bot, Web App Attack
-        $categories = array(18, 19, 21);
+        // Most relevant categories: Bad Web Bot, Web App Attack
+        $categories = array(19, 21);
 
         foreach ($result as $record => $value) {
           $ip = $value->ip;
@@ -226,13 +331,19 @@ function antiscan_abuseipdb_report() {
 /**
  * Utility function
  * @param string $raw_string
+ * @param boolean $use_comma If TRUE comma used as divider too, otherwise return/new line only.
  * @return array of strings saved in the configuration file string via textarea field
  */
-function _textarea_to_array($raw_string = '') {
+function _textarea_to_array($raw_string = '', $use_comma = TRUE) {
   $array_of_strings = array();
   
   if (!empty($raw_string)) {
-    $raw_array        = preg_split("/\\r\\n|\\r|\\n|,/", $raw_string);
+    if ($use_comma) {
+      $raw_array = preg_split("/\\r\\n|\\r|\\n|,/", $raw_string);
+    }
+    else {
+      $raw_array = preg_split("/\\r\\n|\\r|\\n/", $raw_string);
+    }
     $array_of_strings = array_filter(array_map('trim', $raw_array));
   }
   return $array_of_strings;
@@ -274,3 +385,4 @@ function antiscan_block_view($delta = '') {
     }
   }
 }  
+  
