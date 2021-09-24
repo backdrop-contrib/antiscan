@@ -264,12 +264,30 @@ function antiscan_cron() {
   $unblock_after    = $config->get('unblock_after');
   $time_expired     = time() - $unblock_after;  
 
+  antiscan_fix_duplicated_ips();
+  
   if ($unblock) {
     antiscan_unblock($time_expired);
   }
   
   if ($abuseipdb_report) {
     antiscan_abuseipdb_report();
+  }
+}
+
+/**
+ * Remove duplicated blocked IP records from DB. 
+ * Also helps to avoid repeating the reports to AbuseIPDB.
+ * There can be several such records with the same IP and timestamp, 
+ * as a result of the attack of bots.
+ */
+function antiscan_fix_duplicated_ips() {
+  $query = 'DELETE i1 FROM {blocked_ips} i1 INNER  JOIN {blocked_ips} i2 WHERE i1.iid < i2.iid AND i1.ip = i2.ip';
+  $result = db_query($query);
+  
+  if ($result->rowCount()) {
+    $duplicated = $result->rowCount();
+    watchdog('antiscan', 'Removed %duplicated duplicate(s) of blocked IP.', array('%duplicated' => $duplicated));
   }
 }
 
@@ -285,7 +303,7 @@ function antiscan_unblock($time_expired) {
     ->execute();
   
   if ($unblocked > 0) {
-    watchdog('antiscan', 'Unblocked %unblocked IP(s). Selected blocking period has expired.', array('%unblocked' => $unblocked));
+    watchdog('antiscan', 'Unblocked %unblocked IP(s). Blocking period expired.', array('%unblocked' => $unblocked));
   }
 }
 

@@ -67,3 +67,7 @@ function antiscan_update_1001() {
   $config->set('blocked_referrer', 'semalt.com,buttons-for-website.com,simple-share-buttons.com,simplesharebuttons.com');
   $config->save();  
 }
+
+/**
+ * Note: next update function will be named antiscan_update_1003 - skip 1002.
+*/
