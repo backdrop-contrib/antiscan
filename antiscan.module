@@ -386,6 +386,7 @@ function antiscan_block_info() {
 function antiscan_block_view($delta = '') {
   $block = array();
   $ip_num = '';
+  include_once BACKDROP_ROOT . '/core/includes/install.inc';
   $requirements = system_get_requirements();
   foreach ($requirements as $requirement) {
     if (isset($requirement['title']) && $requirement['title'] === 'IP address blocking') {
