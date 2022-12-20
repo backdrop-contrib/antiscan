@@ -53,7 +53,7 @@ function antiscan_menu() {
  *
  */
 function antiscan_boot() {
-  $request_uri = htmlspecialchars($_SERVER['REQUEST_URI']);
+  $request_uri = htmlspecialchars($_SERVER['REQUEST_URI'] ?? null);
   $ua_string   = isset($_SERVER['HTTP_USER_AGENT']) ? htmlspecialchars($_SERVER['HTTP_USER_AGENT']) : '';
   $referrer    = isset($_SERVER['HTTP_REFERER']) ? htmlspecialchars($_SERVER['HTTP_REFERER']) : '';
   $ip          = check_plain(ip_address());
