@@ -120,7 +120,7 @@ function antiscan_form($form, &$form_state) {
     '#type' => 'checkbox',
     '#title' => t('Test mode'),
     '#default_value' => $config->get('test_mode'),
-    '#description' => t('Turn it on to test your patterns. Your IP address will not be blocked, but you may see a blocking message when trying to visit a path containing a restricted path pattern.'), 
+    '#description' => t('Turn it on to test your patterns. Your IP address will not be blocked, but you can see a blocking message when you try to visit a path that contains a restricted path pattern.'), 
   );
   
   $form['actions']['#type'] = 'actions';
