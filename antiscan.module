@@ -3,7 +3,7 @@
  * @file antiscan.module
  */
 
-define('MODULE_UID', 10001); // reasonable big uid for use in DB records
+define('MODULE_UID', 10001, false); // reasonable big uid for use in DB records
 
 /**
  * Implements hook_config_info().
@@ -150,9 +150,9 @@ function antiscan_blocked_referrer($referrer = '') {
 function antiscan_action($ip, $type, $subject) {
   $config      = config('antiscan.settings');
   $test_mode   = $config->get('test_mode');
-  $ban_message = '<h1>Suspicious activity detected, your IP address ' . $ip . ' has been banned.</h1>';
-  $ban_reason  = '<p>Ban reason: ' . $type . ' is ' . $subject . '</p>'
-    . '<h2>This is not a real ban - the test mode of the "Antiscan" module is on!</h2>';
+  $ban_message = '<h1>Suspicious activity detected, your IP address ' . $ip . ' has been blocked.</h1>';
+  $ban_reason  = '<p>Blocking reason: ' . $type . ' is ' . $subject . '</p>'
+    . '<h2>This is not a real blocking - the test mode of the "Antiscan" module is on!</h2>';
 
   if ($test_mode) {
     header($_SERVER['SERVER_PROTOCOL'] . ' 403 Forbidden');
@@ -214,16 +214,23 @@ function antiscan_block_ip($ip, $reason) {
   $config      = config('antiscan.settings');
   $log_enabled = $config->get('log_enabled');
 
+  if (mb_strlen($reason,'UTF-8') > 230) {
+    $reason_dec = urldecode(substr($reason, 0, 230)) . ' ... ';
+  }
+  else {
+    $reason_dec  = urldecode($reason);
+  }
+
   // Insert the record to DB.
   db_insert('blocked_ips')
-    ->fields(array('ip' => $ip, 'reason' => $reason, 'time' => time(), 'uid' => MODULE_UID))
+    ->fields(array('ip' => $ip, 'reason' => $reason_dec, 'time' => time(), 'uid' => MODULE_UID))
     ->execute();
 
   if ($log_enabled) {
     watchdog(
       'antiscan',
       'IP %ip blocked. %reason.',
-      array('%ip' => $ip, '%reason' => $reason),
+      array('%ip' => $ip, '%reason' => $reason_dec),
       WATCHDOG_WARNING
     );
   }

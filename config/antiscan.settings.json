@@ -3,7 +3,7 @@
   "path_patterns": "elrekt,eval-stdin.php,/fck,phpMyAdmin,/wp-*,wlwmanifest.xml,xmlrpc.php",
   "path_noblock": "user/,admin/",
   "blocked_ua": "drupalgeddon2\r\nGo-http-client/*\r\nlibwww-perl*\r\npython-requests/*",
-  "blocked_referrer": "semalt.com,buttons-for-website.com,simple-share-buttons.com,simplesharebuttons.com",
+  "blocked_referrer": "semalt.com,buttons-for-website.com,simplesharebuttons.com",
   "log_enabled": 1,
   "test_mode": 0,
   "unblock": 1,
