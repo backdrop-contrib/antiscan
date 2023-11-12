@@ -4,6 +4,7 @@
  * Admin form to manage module settings
  *
  */
+
 /**
  * Define the form for manage blocking restricted paths, User-Agents and referrers
  *
@@ -59,7 +60,7 @@ function antiscan_form($form, &$form_state) {
     '#rows' => 5,
     '#columns' => 60,
     '#default_value' => $blocked_ua,
-    '#title' => t('Blocked User-Agent strings'),
+    '#title' => t('Blockable User-Agent strings'),
     '#description' => t('Enter User-Agent strings to block, one per line.')
       . '<br>' . t('The <b>*</b> character is a wildcard for end of the string, so pattern like') . '<b> python-requests/* </b>'
       . t('will block any User-Agent strings starting with "python-requests/", for example "python-requests/2.9.0".'),
@@ -72,26 +73,10 @@ function antiscan_form($form, &$form_state) {
     '#rows' => 5,
     '#columns' => 60,
     '#default_value' => $blocked_referrer,
-    '#title' => t('Blocked Referrer spam domains'),
+    '#title' => t('Blockable referrer spam domains'),
     '#description' => t('Enter referrer spam domains to block, separating them with commas or new lines.')
       . '<br>' . t('Use domain name only, for example: "semalt.com" or "buttons-for-website.com" without quotes.'),
     '#element_validate' => array('_validate_self_referrer'),
-  );
-
-  if (module_exists('abuseipdb_report')) {
-    $form['abuseipdb_report'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Report to AbuseIPDB'),
-      '#default_value' => $config->get('abuseipdb_report'),
-      '#description' => t('Report to AbuseIPDB about blocked scanners activity.'),
-    );
-  }
-
-  $form['log_enabled'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Enable logging'),
-    '#default_value' => $config->get('log_enabled'),
-    '#description' => t('Enable logging for blocked access attempts.'),
   );
 
   $form['unblock'] = array(
@@ -116,6 +101,22 @@ function antiscan_form($form, &$form_state) {
       ),
     ),
   );
+
+  $form['log_enabled'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Enable logging'),
+    '#default_value' => $config->get('log_enabled'),
+    '#description' => t('Enable logging of blocked access attempts.'),
+  );
+
+  if (module_exists('abuseipdb_report')) {
+    $form['abuseipdb_report'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Report to AbuseIPDB'),
+      '#default_value' => $config->get('abuseipdb_report'),
+      '#description' => t('Report to AbuseIPDB about blocked scanners activity.'),
+    );
+  }
 
   $form['test_mode'] = array(
     '#type' => 'checkbox',

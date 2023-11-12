@@ -3,13 +3,13 @@ Antiscan
 
 Automatic block (ban) IP addresses used by bad crawlers or vulnerability scanners.
 
-**Antiscan** is an add-on module that extends the [IP address blocking](https://backdropcms.org/project/ip_blocking)
+**Antiscan** is an add-on module that extends the [IP Address Blocking](https://backdropcms.org/project/ip_blocking)
 module (version 1.x-1.0.5 or newest) to automatically block anyone who tries to access paths defined as restricted.
 
 Usually it is a bad crawler looking for known potentially vulnerable paths,
 such as "wp-admin.php", "xmlrpc.php" and so on.
 
-Also, since version 1.x-1.0.5, you can block bad bots using their well-known User-Agent strings and spam referrer domains.
+Also, since version 1.x-1.0.5, you can block bad robots using their well-known User-Agent strings and spam referrer domains.
 
 **New in version version 1.x-1.0.4:** option "Report to AbuseIPDB" can be enabled for automatic reporting to AbuseIPDB about blocked scanners activity.
 You need to install [AbuseIPDB report](https://backdropcms.org/project/abuseipdb_report) module to see and use this option.
@@ -24,7 +24,7 @@ Administration page is available via menu *Administration > Configuration >
 User accounts > Antiscan* (admin/config/people/antiscan)
 and may be used for:
 
-- add your patterns for paths to be restricted (some usefull patterns are already added out of the box);
+- add your patterns for paths to be restricted (some usefully patterns are already added out of the box);
 - set paths or portions of paths that will NOT be restricted to avoid self-blocking;
 - set "User-Agent strings" to be blocked;
 - set "Referrer spam domains" to be blocked;

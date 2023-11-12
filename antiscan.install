@@ -1,10 +1,9 @@
 <?php
-
 /**
  * @file
  * Install, update and uninstall functions for the Antiscan module.
  */
- 
+
 /**
  * Implements hook_requirements().
  */
@@ -16,20 +15,20 @@ function antiscan_requirements($phase) {
 
   if ($phase == 'install') {
     $ip_blocking_info = system_get_info('module', 'ip_blocking');
-      if (empty($ip_blocking_info) || empty($ip_blocking_info['version'])) {
+    if (empty($ip_blocking_info) || empty($ip_blocking_info['version'])) {
       // The module doesn't exist, it's not enabled?
       return FALSE;
     }
     if (version_compare($ip_blocking_info['version'], '1.x-1.0.5', '<')) {
       $requirements['version'] = array(
-        'title' => $t('version'),
-        'description' => $t('IP address blocking module must have version 1.x-1.0.5 or newest.'),
+        'title' => $t('IP Address Blocking module version'),
+        'description' => $t('IP Address Blocking module must have version 1.x-1.0.5 or newest.'),
         'value' => check_plain($ip_blocking_info['version']),
         'severity' => REQUIREMENT_ERROR,
       );
     }
   }
-  
+
   if ($phase == 'runtime') {
     if ($test_mode) {
       $url = url('admin/config/people/antiscan');
@@ -39,7 +38,7 @@ function antiscan_requirements($phase) {
         array('@url' => $url)),
         'severity' => REQUIREMENT_WARNING,
       );
-    }  
+    }
   }
 
   return $requirements;
@@ -53,7 +52,7 @@ function antiscan_update_1000() {
   $config = config('antiscan.settings');
   $config->set('abuseipdb_report', 0);
   $config->save();
-  
+
   state_set('antiscan_abuseipdb_report_last_date', time());
 }
 
@@ -65,7 +64,7 @@ function antiscan_update_1001() {
   $config = config('antiscan.settings');
   $config->set("blocked_ua", "drupalgeddon2\r\nGo-http-client/*\r\nlibwww-perl*\r\npython-requests/*");
   $config->set('blocked_referrer', 'semalt.com,buttons-for-website.com,simple-share-buttons.com,simplesharebuttons.com');
-  $config->save();  
+  $config->save();
 }
 
 /**

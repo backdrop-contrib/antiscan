@@ -3,7 +3,7 @@
  * @file antiscan.module
  */
 
-define('MODULE_UID', 10001, false); // reasonable big uid for use in DB records
+define('MODULE_UID', 10001); // reasonable big uid for use in DB records
 
 /**
  * Implements hook_config_info().
@@ -161,10 +161,10 @@ function antiscan_action($ip, $type, $subject) {
   }
 
   if (!antiscan_logged_in_ip($ip)) {
-
     header($_SERVER['SERVER_PROTOCOL'] . ' 403 Forbidden');
     print $ban_message;
 
+    $reason = 'Other';
     switch ($type) {
       case 'path':
         if (strlen($subject) > 45) {
@@ -182,7 +182,7 @@ function antiscan_action($ip, $type, $subject) {
         break;
     }
 
-    antiscan_block_ip($ip, $reason);
+    antiscan_block_ip($ip, $reason, $type);
     exit();
   }
 }
@@ -209,10 +209,11 @@ function antiscan_logged_in_ip($ip = '') {
  *
  * @param string $ip IP address to block.
  * @param string $reason Reason for blocking.
+ * @param string $type
  */
-function antiscan_block_ip($ip, $reason) {
-  $config      = config('antiscan.settings');
-  $log_enabled = $config->get('log_enabled');
+function antiscan_block_ip($ip, $reason, $type) {
+  $config        = config('antiscan.settings');
+  $log_enabled   = $config->get('log_enabled');
 
   if (mb_strlen($reason,'UTF-8') > 230) {
     $reason_dec = urldecode(substr($reason, 0, 230)) . ' ... ';
@@ -221,9 +222,16 @@ function antiscan_block_ip($ip, $reason) {
     $reason_dec  = urldecode($reason);
   }
 
+  if (db_field_exists('blocked_ips', 'type')) {
+    $fields = array('ip' => $ip, 'reason' => $reason_dec, 'time' => time(), 'uid' => MODULE_UID, 'type' => $type);
+  }
+  else {
+    $fields = array('ip' => $ip, 'reason' => $reason_dec, 'time' => time(), 'uid' => MODULE_UID,);
+  }
+
   // Insert the record to DB.
   db_insert('blocked_ips')
-    ->fields(array('ip' => $ip, 'reason' => $reason_dec, 'time' => time(), 'uid' => MODULE_UID))
+    ->fields($fields)
     ->execute();
 
   if ($log_enabled) {
@@ -253,9 +261,12 @@ function antiscan_check_ip($ip) {
  */
 function antiscan_ip_blocked($ip) {
   $blocked = FALSE;
-
   if (class_exists('Database', FALSE)) {
-    $blocked = (bool)db_query("SELECT 1 FROM {blocked_ips} WHERE ip = :ip", array(':ip' => $ip))->fetchField();
+    $blocked = (bool) db_select('blocked_ips', 'bi')
+      ->fields('bi', array('ip'))
+      ->condition('ip', $ip)
+      ->execute()
+      ->fetchField();
   }
   return $blocked;
 }
@@ -302,7 +313,6 @@ function antiscan_fix_duplicated_ips() {
  * @param int $time_expired
  */
 function antiscan_unblock($time_expired) {
-
   $unblocked = db_delete('blocked_ips')
     ->condition('uid', MODULE_UID)
     ->condition('time', $time_expired,'<')
@@ -324,12 +334,10 @@ function antiscan_abuseipdb_report() {
 
     if ($abuseipdb_report) {
       $last_report_date = state_get('antiscan_abuseipdb_report_last_date', 0);
-
+      $with_type = db_field_exists('blocked_ips', 'type');
+      $fields = $with_type ? array('ip', 'reason', 'type') : array('ip', 'reason');
       $result = db_select('blocked_ips', 'bi')
-          ->fields('bi', array(
-            'ip', 'reason',
-            )
-          )
+          ->fields('bi', $fields)
           ->condition('uid', MODULE_UID, '=')
           ->condition('time', $last_report_date, '>')
           ->execute()
@@ -338,11 +346,25 @@ function antiscan_abuseipdb_report() {
       if ($result) {
         // Most relevant categories: Bad Web Bot, Web App Attack
         $categories = array(19, 21);
-
         foreach ($result as $record => $value) {
           $ip = $value->ip;
-          $request = $value->reason;
-          abuseipdb_report_ip($ip, $request, '"Antiscan" module', $categories);
+          $request = $with_type ? $value->type : $value->reason;
+          // Replacing information that may be sensitive.
+          switch ($request) {
+            case 'path':
+              $message = 'scanning for vulnerable files';
+              break;
+            case 'ua':
+              $message = 'forbidden user agent';
+              break;
+            case 'referrer':
+              $message = 'forbidden referrer';
+              break;
+            default:
+              $message = $request;
+          }
+
+          abuseipdb_report_ip($ip, $message, '"Antiscan" module', $categories);
           sleep(1);
         }
 
