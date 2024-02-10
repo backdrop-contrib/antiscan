@@ -8,4 +8,4 @@ dependencies[] = ip_blocking (>=1.x-1.0.5)
 
 configure = admin/config/people/antiscan
 
-version = 1.0.9
+version = 1.0.10

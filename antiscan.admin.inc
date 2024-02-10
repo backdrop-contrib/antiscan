@@ -13,7 +13,7 @@ function antiscan_form($form, &$form_state) {
   $config = config('antiscan.settings');
 
   $form['top'] = array(
-    '#markup' => t('When a web crawler or even a person tries to visit a path that matches one of the patterns specified in the field below, their IP address will be blocked.')
+    '#markup' => t('If a web crawler or even a person (except for logged in users) tries to visit a path that matches one of the patterns specified in the fields below, their IP address will be blocked') . ' <u>' . t('immediately without warning.') . '</u>',
   );
 
   $url = url('admin/config/people/ip-blocking');
@@ -37,7 +37,7 @@ function antiscan_form($form, &$form_state) {
 
   $form['noblock'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Not blockable path patterns'),
+    '#title' => t('Non-blockable path patterns'),
     '#collapsible' => TRUE,
     '#collapsed' => TRUE,
   );
@@ -45,7 +45,7 @@ function antiscan_form($form, &$form_state) {
   $path_noblock = $config->get('path_noblock');
   $form['noblock']['path_noblock'] = array(
     '#type' => 'textarea',
-    '#title' => t('Not blockable path patterns'),
+    '#title' => t('Non-blockable path patterns'),
     '#rows' => 5,
     '#columns' => 60,
     '#default_value' => $path_noblock,
@@ -88,7 +88,10 @@ function antiscan_form($form, &$form_state) {
   $form['unblock_after'] = array(
     '#type' => 'select',
     '#options' => array(
-      86400 => t('1 day'),
+      900 => t('15 minutes'),
+      3600 => t('60 minutes'),
+      43200 => t('12 hours'),
+      86400 => t('24 hours'),
       604800 => t('7 days'),
       2592000 => t('30 days'),
       31536000 => t('365 days'),

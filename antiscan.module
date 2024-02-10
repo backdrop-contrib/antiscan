@@ -352,7 +352,7 @@ function antiscan_abuseipdb_report() {
           // Replacing information that may be sensitive.
           switch ($request) {
             case 'path':
-              $message = 'scanning for vulnerable files';
+              $message = 'malicious activity detected';
               break;
             case 'ua':
               $message = 'forbidden user agent';
