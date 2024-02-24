@@ -13,7 +13,8 @@ function antiscan_form($form, &$form_state) {
   $config = config('antiscan.settings');
 
   $form['top'] = array(
-    '#markup' => t('If a web crawler or even a person (except for logged in users) tries to visit a path that matches one of the patterns specified in the fields below, their IP address will be blocked') . ' <u>' . t('immediately without warning.') . '</u>',
+    '#markup' => t('If a web crawler or even a person (except for logged in users) tries to visit a path that matches one of the patterns specified in the fields below, their IP address will be blocked')
+      . ' <u>' . t('immediately without warning') . '</u> ' . t('if the threshold number of attempts is not specified below.'),
   );
 
   $url = url('admin/config/people/ip-blocking');
@@ -52,6 +53,69 @@ function antiscan_form($form, &$form_state) {
     '#required' => TRUE,
     '#description' => t('Enter paths or portions of paths that will NOT be restricted to avoid self-blocking for users.')
       . '<br>' . t('Same format of rules as above.'),
+  );
+
+  $threshold_enabled = $config->get('threshold_enabled');
+  $threshold_limit   = $config->get('threshold_limit');
+  $threshold_window  = $config->get('threshold_window');
+
+  if ($threshold_enabled) {
+    $threshold = $threshold_limit . ' ' . t('time(s) per') . ' ' . $threshold_window . ' ' . t('seconds');
+  }
+  else {
+    $threshold = t('not specified');
+  }
+
+  $form['threshold'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Threshold limit and window:') . ' ' . $threshold,
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+
+  $form['threshold']['threshold_enabled'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Enable restricted path threshold:') . '&nbsp;',
+    '#default_value' => $threshold_enabled,
+    '#prefix' => '<div style="display:inline-flex;align-items:center;column-gap:1rem">'
+  );
+
+  $form['threshold']['threshold_limit'] = array(
+    '#type' => 'number',
+    '#title_display' => 'after',
+    '#title' => t('attempt(s) as limit') . ';',
+    '#default_value' => $threshold_limit,
+    '#min' => 1,
+    '#max' => 10,
+    '#step' => 1,
+    '#attributes' => array('title' => array('values 1-10')),
+    '#states' => array(
+      'disabled' => array(
+        ':input[name="threshold_enabled"]' => array('checked' => FALSE),
+      ),
+    ),
+  );
+
+  $form['threshold']['threshold_window'] = array(
+    '#type' => 'number',
+    '#title_display' => 'after',
+    '#title' => t('seconds as window') . '.',
+    '#suffix' => '</div>',
+    '#default_value' => $threshold_window,
+    '#min' => 1,
+    '#max' => 7200,
+    '#step' => 1,
+    '#attributes' => array('title' => array('values 1-7200')),
+    '#states' => array(
+      'disabled' => array(
+        ':input[name="threshold_enabled"]' => array('checked' => FALSE),
+      ),
+    ),
+  );
+
+  $form['threshold']['description'] = array(
+    '#markup' => '<hr><ul><li>' . t('threshold limit - the number of times an IP address can access restricted path during the threshold window before they are blocked;') . '</li>'
+    . '<li>' . t('threshold window - the time period in which to consider attacks. 3600 seconds is one hour.') . '</li></ul>'
   );
 
   $blocked_ua = $config->get('blocked_ua');
@@ -158,24 +222,31 @@ function antiscan_form_validate($form, &$form_state) {
  * Implements hook_submit().
  */
 function antiscan_form_submit($form, &$form_state) {
-  $config           = config('antiscan.settings');
-  $path_patterns    = trim($form_state['values']['path_patterns']);
-  $path_noblock     = trim($form_state['values']['path_noblock']);
-  $blocked_ua       = trim($form_state['values']['blocked_ua']);
-  $blocked_referrer = trim($form_state['values']['blocked_referrer']);
-  $log_enabled      = (int) $form_state['values']['log_enabled'];
-  $unblock          = (int) $form_state['values']['unblock'];
-  $unblock_after    = (int) $form_state['values']['unblock_after'];
-  $test_mode        = (int) $form_state['values']['test_mode'];
+  $config            = config('antiscan.settings');
+  $path_patterns     = trim($form_state['values']['path_patterns']);
+  $path_noblock      = trim($form_state['values']['path_noblock']);
+  $blocked_ua        = trim($form_state['values']['blocked_ua']);
+  $blocked_referrer  = trim($form_state['values']['blocked_referrer']);
+  $log_enabled       = (int) $form_state['values']['log_enabled'];
+  $unblock           = (int) $form_state['values']['unblock'];
+  $unblock_after     = (int) $form_state['values']['unblock_after'];
+  $test_mode         = (int) $form_state['values']['test_mode'];
+  $threshold_enabled = (int) $form_state['values']['threshold_enabled'];
+  $threshold_limit   = (int) $form_state['values']['threshold_limit'];
+  $threshold_window  = (int) $form_state['values']['threshold_window'];
 
-  $config->set('path_patterns',    strtolower($path_patterns));
-  $config->set('path_noblock',     strtolower($path_noblock));
-  $config->set('blocked_ua',       $blocked_ua);
-  $config->set('blocked_referrer', strtolower($blocked_referrer));
+  $config->set('path_patterns',     strtolower($path_patterns));
+  $config->set('path_noblock',      strtolower($path_noblock));
+  $config->set('blocked_ua',        $blocked_ua);
+  $config->set('blocked_referrer',  strtolower($blocked_referrer));
+  $config->set('threshold_enabled', $threshold_enabled);
+  $config->set('threshold_limit',   $threshold_limit);
+  $config->set('threshold_window',  $threshold_window);
 
   if (isset($form_state['values']['abuseipdb_report'])) {
     $config->set('abuseipdb_report', $form_state['values']['abuseipdb_report']);
   }
+
   $config->set('log_enabled',   $log_enabled);
   $config->set('unblock',       $unblock);
   $config->set('unblock_after', $unblock_after);

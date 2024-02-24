@@ -70,3 +70,15 @@ function antiscan_update_1001() {
 /**
  * Note: next update function will be named antiscan_update_1003 - skip 1002.
 */
+
+/**
+ *  Add and initialize new variables.
+ *
+ */
+function antiscan_update_1003() {
+  $config = config('antiscan.settings');
+  $config->set('threshold_enabled', 0);
+  $config->set('threshold_limit', 1);
+  $config->set('threshold_window', 3600);
+  $config->save();
+}

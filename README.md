@@ -11,7 +11,7 @@ such as "wp-admin.php", "xmlrpc.php" and so on.
 
 Also, since version 1.x-1.0.5, you can block bad robots using their well-known User-Agent strings and spam referrer domains.
 
-**New in version version 1.x-1.0.4:** option "Report to AbuseIPDB" can be enabled for automatic reporting to AbuseIPDB about blocked scanners activity.
+**New in version 1.x-1.0.4:** option "Report to AbuseIPDB" can be enabled for automatic reporting to AbuseIPDB about blocked scanner's activity.
 You need to install [AbuseIPDB report](https://backdropcms.org/project/abuseipdb_report) module to see and use this option.
 
 Installation
@@ -31,7 +31,8 @@ and can be used to:
 - enable automatic reporting to AbuseIPDB about blocked scanner activity ("AbuseIPDB report" module should be installed);
 - enable logging of blocked access attempts (enabled by default);
 - select the time after which the blocked IP will be automatically unblocked;
-- use "Test Mode" to test your patterns, your current IP will not be blocked, but you may see a message when you try to visit the restricted path.
+- use "Test Mode" to test your patterns, your current IP will not be blocked, instead you can see a message when you try to visit the restricted path;
+- for locations with many people sharing the same IP: you can set threshold limit for wrong attempts.
 
 This module also provides a block with information about the number of currently blocked IP addresses.
 You can place this block anywhere you like (for users with 'antiscan settings' permission).

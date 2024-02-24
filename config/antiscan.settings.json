@@ -8,5 +8,8 @@
   "test_mode": 0,
   "unblock": 1,
   "unblock_after": 604800,
-  "abuseipdb_report": 0
+  "abuseipdb_report": 0,
+  "threshold_enabled": 0,
+  "threshold_limit": 1,
+  "threshold_window": 3600
 }

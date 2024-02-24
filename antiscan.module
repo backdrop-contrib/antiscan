@@ -148,25 +148,48 @@ function antiscan_blocked_referrer($referrer = '') {
  * @param string $subject
  */
 function antiscan_action($ip, $type, $subject) {
-  $config      = config('antiscan.settings');
-  $test_mode   = $config->get('test_mode');
-  $ban_message = '<h1>Suspicious activity detected, your IP address ' . $ip . ' has been blocked.</h1>';
-  $ban_reason  = '<p>Blocking reason: ' . $type . ' is ' . $subject . '</p>'
+  $config            = config('antiscan.settings');
+  $test_mode         = $config->get('test_mode');
+  $log_enabled       = $config->get('log_enabled');
+  $threshold_enabled = $config->get('threshold_enabled');
+  $window            = intval($config->get('threshold_window'));
+  $limit             = intval($config->get('threshold_limit'));
+
+  $pre_ban_message   = '<h1>Suspicious activity detected. Your IP address ' . $ip . ' will be blocked if you continue such attempts.</h1>';
+  $ban_message       = '<h1>Suspicious activity detected, your IP address ' . $ip . ' has been blocked.</h1>';
+  $ban_test_message  = '<p>Blocking reason: ' . $type . ' is ' . $subject . '</p>'
     . '<h2>This is not a real blocking - the test mode of the "Antiscan" module is on!</h2>';
 
   if ($test_mode) {
     header($_SERVER['SERVER_PROTOCOL'] . ' 403 Forbidden');
-    print $ban_message . $ban_reason;
+    print $ban_message . $ban_test_message;
     exit();
   }
 
   if (!antiscan_logged_in_ip($ip)) {
     header($_SERVER['SERVER_PROTOCOL'] . ' 403 Forbidden');
-    print $ban_message;
-
     $reason = 'Other';
     switch ($type) {
       case 'path':
+        // Check if threshold is enabled
+        if ($threshold_enabled) {
+          include_once BACKDROP_ROOT . '/core/includes/common.inc';
+          flood_register_event('antiscan', $window);
+          // When flood_is_allowed return false, the user will be blocked.
+          if (flood_is_allowed('antiscan', $limit, $window)) {
+            if ($log_enabled) {
+              watchdog(
+                'antiscan',
+                'IP %ip attempting to use restricted path "%subject".',
+                array('%ip' => $ip, '%subject' => $subject),
+                WATCHDOG_WARNING
+              );
+              print $pre_ban_message;
+              exit();
+            }
+          }
+        }
+
         if (strlen($subject) > 45) {
           $reason = 'Request: ' . substr($subject, 0, 45) . '...';
         }
@@ -181,7 +204,7 @@ function antiscan_action($ip, $type, $subject) {
         $reason = 'Spam referrer: ' . $subject;
         break;
     }
-
+    print $ban_message;
     antiscan_block_ip($ip, $reason, $type);
     exit();
   }
