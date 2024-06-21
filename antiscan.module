@@ -235,14 +235,14 @@ function antiscan_logged_in_ip($ip = '') {
  * @param string $type
  */
 function antiscan_block_ip($ip, $reason, $type) {
-  $config        = config('antiscan.settings');
-  $log_enabled   = $config->get('log_enabled');
+  $config      = config('antiscan.settings');
+  $log_enabled = $config->get('log_enabled');
 
   if (mb_strlen($reason,'UTF-8') > 230) {
-    $reason_dec = urldecode(substr($reason, 0, 230)) . ' ... ';
+    $reason_dec = substr($reason, 0, 200) . ' ... ';
   }
   else {
-    $reason_dec  = urldecode($reason);
+    $reason_dec  = $reason;
   }
 
   if (db_field_exists('blocked_ips', 'type')) {
@@ -253,9 +253,12 @@ function antiscan_block_ip($ip, $reason, $type) {
   }
 
   // Insert the record to DB.
-  db_insert('blocked_ips')
-    ->fields($fields)
-    ->execute();
+  try {
+    db_insert('blocked_ips')->fields($fields)->execute();
+  }
+  catch (PDOException|FieldsOverlapException|NoFieldsException $e) {
+    watchdog_exception('antiscan', $e);
+  }
 
   if ($log_enabled) {
     watchdog(

@@ -9,10 +9,12 @@ module (version 1.x-1.0.5 or newer) to automatically block anyone trying to acce
 Usually this is a bad crawler looking for known potentially vulnerable paths,
 such as "wp-admin.php", "xmlrpc.php" and so on.
 
-Also, since version 1.x-1.0.5, you can block bad robots using their well-known User-Agent strings and spam referrer domains.
+Also, since version 1.x-1.0.5, you can block bad robots by using:
+- their known User-Agent strings;
+- SPAM referrer domains.
 
-**New in version 1.x-1.0.4:** option "Report to AbuseIPDB" can be enabled for automatic reporting to AbuseIPDB about blocked scanner's activity.
-You need to install [AbuseIPDB report](https://backdropcms.org/project/abuseipdb_report) module to see and use this option.
+**New in version 1.x-1.0.4:** "Report to AbuseIPDB" option can be enabled to automatically report blocked scanner activity to AbuseIPDB.
+You need to install the [AbuseIPDB report](https://backdropcms.org/project/abuseipdb_report) module to see and use this option.
 
 Installation
 ------------
