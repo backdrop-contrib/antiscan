@@ -252,12 +252,33 @@ function antiscan_block_ip($ip, $reason, $type) {
     $fields = array('ip' => $ip, 'reason' => $reason_dec, 'time' => time(), 'uid' => MODULE_UID,);
   }
 
-  // Insert the record to DB.
-  try {
-    db_insert('blocked_ips')->fields($fields)->execute();
-  }
-  catch (PDOException|FieldsOverlapException|NoFieldsException $e) {
-    watchdog_exception('antiscan', $e);
+  // Update existing blocked IP first. This avoids duplicate inserts in normal cases.
+  $updated = db_update('blocked_ips')
+    ->fields($fields)
+    ->condition('ip', $ip)
+    ->execute();
+
+  // If no existing row was updated, insert a new block record.
+  if (!$updated) {
+    try {
+      db_insert('blocked_ips')->fields($fields)->execute();
+    }
+    catch (PDOException $e) {
+      // Another request may have inserted the same IP between update and insert.
+      // Treat duplicate-key violation as a successful block, not as an error.
+      if ($e->getCode() == '23000') {
+        db_update('blocked_ips')
+          ->fields($fields)
+          ->condition('ip', $ip)
+          ->execute();
+      }
+      else {
+        watchdog_exception('antiscan', $e);
+      }
+    }
+    catch (Exception $e) {
+      watchdog_exception('antiscan', $e);
+    }
   }
 
   if ($log_enabled) {

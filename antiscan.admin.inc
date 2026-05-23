@@ -214,7 +214,7 @@ function antiscan_form_validate($form, &$form_state) {
 
   if (!empty($matched)) {
     $matched_patterns = implode(", ", $matched);
-    form_set_error('path_patterns', t('You cannot use "%matched_patterns" for a pattern. Please verify "Not blockable path patterns" under "Additional settings" below.', array('%matched_patterns' => $matched_patterns)));
+    form_set_error('path_patterns', t('You cannot use "%matched_patterns" for a pattern. Please verify "Non-blockable path patterns" below.', array('%matched_patterns' => $matched_patterns)));
   }
 }
 

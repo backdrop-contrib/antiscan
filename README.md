@@ -1,13 +1,12 @@
 Antiscan
 ========
 
-Automatically block (ban) IP addresses used by bad crawlers or vulnerability scanners.
+This module provides automatic block (ban) IP addresses used by bad crawlers or vulnerability scanners.
 
 **Antiscan** is an add-on module that extends the [IP Address Blocking](https://backdropcms.org/project/ip_blocking)
 module (version 1.x-1.0.5 or newer) to automatically block anyone trying to access restricted paths.
 
-Usually this is a bad crawler looking for known potentially vulnerable paths,
-such as "wp-admin.php", "xmlrpc.php" and so on.
+Typically, this is a substandard crawler that seeks out known, potentially vulnerable paths, such as "wp-admin.php," "xmlrpc.php," and so on.
 
 Also, since version 1.x-1.0.5, you can block bad robots by using:
 - their known User-Agent strings;
